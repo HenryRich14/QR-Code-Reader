@@ -2,7 +2,7 @@ from utils import *
 
 
 class PopupWindow(object):
-    def __init__(self, master, name, force_focus=True, create_root=True):
+    def __init__(self, master, name: str, force_focus=True, create_root=True):
         self.master = master
         if create_root:
             self.root = tk.Tk()
@@ -29,7 +29,8 @@ class PopupWindow(object):
 
     def refocus(self, *args):
         if len(args) > 1:
-            raise AttributeError("refocus takes 1 positional argument, found {}".format(1 + len(args)))
+            Error(self.master.error_handler, "Popup_Windows.py", 32, "refocus takes 2 positional argument,"
+                                                                     "found {}".format(1 + len(args)))
         if self.popup_window is None and not self.closed and not self.refocus_paused:
             self.root.focus_force()
 
@@ -331,7 +332,7 @@ class ChangeTabletNamePopup(PopupWindow):
 
     def lst_select(self, event):
         if event is None:
-            raise AttributeError("Expected event, found None")
+            Error(self.master.error_handler, "Popup_Windows.py", 334, "Expected event, found None")
         self.ent_name.delete(0, tk.END)
         self.ent_name.insert(0, self.lst_expected_names.get(self.lst_expected_names.curselection()))
 

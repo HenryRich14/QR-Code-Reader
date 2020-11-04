@@ -13,45 +13,46 @@ class Application(object):
         self.root.wm_title("QR Code Reader")
         self.root.wm_protocol("WM_DELETE_WINDOW", self.close)
         self.photo = None
+        self.error_handler = ErrorHandler("Outputs/Error outputs.txt")
 
         # Widgets
         # Frames
-        self.frm_window = None
-        self.frm_received_inputs = None
-        self.frm_expected_inputs = None
-        self.frm_match_num = None
-        self.frm_scouter_widgets = None
-        self.frm_scouter_names = None
-        self.frm_scouter_btns = None
+        self.frm_window: Union[tk.Frame, None] = None
+        self.frm_received_inputs: Union[tk.Frame, None] = None
+        self.frm_expected_inputs: Union[tk.Frame, None] = None
+        self.frm_match_num: Union[tk.Frame, None] = None
+        self.frm_scouter_widgets: Union[tk.Frame, None] = None
+        self.frm_scouter_names: Union[tk.Frame, None] = None
+        self.frm_scouter_buttons: Union[tk.Frame, None] = None
         # Labels
-        self.lbl_camera_img = None
-        self.lbl_previous_inputs = None
-        self.lbl_match_number_id = None
-        self.lbl_scouter_preset_id = None
-        self.lbl_scouter_separator = None
-        self.lbl_scouter_1_id = None
-        self.lbl_scouter_2_id = None
-        self.lbl_scouter_3_id = None
-        self.lbl_scouter_4_id = None
-        self.lbl_scouter_5_id = None
-        self.lbl_scouter_6_id = None
-        self.lbl_scouter_btns_separator = None
+        self.lbl_camera_img: Union[tk.Label, None] = None
+        self.lbl_previous_inputs: Union[tk.Label, None] = None
+        self.lbl_match_number_id: Union[tk.Label, None] = None
+        self.lbl_scouter_preset_id: Union[tk.Label, None] = None
+        self.lbl_scouter_separator: Union[tk.Label, None] = None
+        self.lbl_scouter_1_id: Union[tk.Label, None] = None
+        self.lbl_scouter_2_id: Union[tk.Label, None] = None
+        self.lbl_scouter_3_id: Union[tk.Label, None] = None
+        self.lbl_scouter_4_id: Union[tk.Label, None] = None
+        self.lbl_scouter_5_id: Union[tk.Label, None] = None
+        self.lbl_scouter_6_id: Union[tk.Label, None] = None
+        self.lbl_scouter_btns_separator: Union[tk.Label, None] = None
         # Buttons
-        self.btn_settings = None
-        self.btn_decrement_match_num = None
-        self.btn_increment_match_num = None
-        self.btn_get_preset = None
-        self.btn_save_preset = None
-        self.btn_setup_next_match = None
+        self.btn_settings: Union[tk.Button, None] = None
+        self.btn_decrement_match_num: Union[tk.Button, None] = None
+        self.btn_increment_match_num: Union[tk.Button, None] = None
+        self.btn_get_preset: Union[tk.Button, None] = None
+        self.btn_save_preset: Union[tk.Button, None] = None
+        self.btn_setup_next_match: Union[tk.Button, None] = None
         # Entry Boxes
-        self.ent_match_num = None
-        self.ent_scouter_preset = None
-        self.ent_scouter_1 = None
-        self.ent_scouter_2 = None
-        self.ent_scouter_3 = None
-        self.ent_scouter_4 = None
-        self.ent_scouter_5 = None
-        self.ent_scouter_6 = None
+        self.ent_match_num: Union[tk.Entry, None] = None
+        self.ent_scouter_preset: Union[tk.Entry, None] = None
+        self.ent_scouter_1: Union[tk.Entry, None] = None
+        self.ent_scouter_2: Union[tk.Entry, None] = None
+        self.ent_scouter_3: Union[tk.Entry, None] = None
+        self.ent_scouter_4: Union[tk.Entry, None] = None
+        self.ent_scouter_5: Union[tk.Entry, None] = None
+        self.ent_scouter_6: Union[tk.Entry, None] = None
         # Build Widgets
         self.build_widgets()
 
@@ -62,9 +63,9 @@ class Application(object):
         self.settings = {}
         self.previous_inputs = {}
         self.presets = {}
-        self.popup_window = None
-        self.scout_entries = [self.ent_scouter_1, self.ent_scouter_2, self.ent_scouter_3,
-                              self.ent_scouter_4, self.ent_scouter_5, self.ent_scouter_6]
+        self.popup_window: Union[PopupWindow, None] = None
+        self.scout_entries: List[Union[tk.Entry, None]] = [self.ent_scouter_1, self.ent_scouter_2, self.ent_scouter_3,
+                                                           self.ent_scouter_4, self.ent_scouter_5, self.ent_scouter_6]
         self.received_teams = []
         self.pull_settings()
         self.pull_previous_data()
@@ -72,6 +73,11 @@ class Application(object):
         # Setup video thread
         self.thread = threading.Thread(target=self.video_loop, args=(), daemon=True)
         self.thread.start()
+
+        # Test
+        Error(self.error_handler, "main.py", 78, "Test1", False)
+        Error(self.error_handler, "main.py", 79, "Test2", False)
+        Error(self.error_handler, "main.py", 80, "Test3", False)
 
         # Start the mainloop()
         self.root.mainloop()
@@ -83,7 +89,7 @@ class Application(object):
         self.frm_expected_inputs = tk.Frame(master=self.frm_window, padx=20)
         self.frm_match_num = tk.Frame(master=self.frm_expected_inputs, pady=40)
         self.frm_scouter_names = tk.Frame(master=self.frm_expected_inputs)
-        self.frm_scouter_btns = tk.Frame(master=self.frm_expected_inputs)
+        self.frm_scouter_buttons = tk.Frame(master=self.frm_expected_inputs)
 
         # Labels
         self.lbl_camera_img = tk.Label(master=self.frm_received_inputs, text="Camera is warming up...",
@@ -112,9 +118,9 @@ class Application(object):
                                                  command=self.btn_decrement_click)
         self.btn_increment_match_num = tk.Button(master=self.frm_match_num, text="+", font=("Helvetica", 18),
                                                  command=self.btn_increment_click)
-        self.btn_get_preset = tk.Button(master=self.frm_scouter_btns, text="Open Presets", font=("Helvetica", 20),
+        self.btn_get_preset = tk.Button(master=self.frm_scouter_buttons, text="Open Presets", font=("Helvetica", 20),
                                         command=self.btn_get_preset_click)
-        self.btn_save_preset = tk.Button(master=self.frm_scouter_btns, text="Save As Preset", font=("Helvetica", 20),
+        self.btn_save_preset = tk.Button(master=self.frm_scouter_buttons, text="Save As Preset", font=("Helvetica", 20),
                                          command=self.btn_save_preset_click)
         self.btn_setup_next_match = tk.Button(master=self.frm_expected_inputs, text="Setup Next Match",
                                               font=("Helvetica", 20), command=self.setup_next_match)
@@ -169,7 +175,7 @@ class Application(object):
 
         self.lbl_scouter_btns_separator.grid(row=2, column=0)
 
-        self.frm_scouter_btns.grid(row=3, column=0, columnspan=2)
+        self.frm_scouter_buttons.grid(row=3, column=0, columnspan=2)
         self.btn_get_preset.grid(row=0, column=0)
         self.btn_save_preset.grid(row=0, column=1)
         self.btn_setup_next_match.grid(row=4, column=0, columnspan=2)
@@ -193,7 +199,7 @@ class Application(object):
         except OSError:
             pass
         with open(self.settings_file, "w") as fs:
-            fs.write(str(self.settings))
+            print(str(self.settings), file=fs)
 
     def pull_previous_data(self):
         try:
@@ -213,7 +219,7 @@ class Application(object):
 
     def put_data(self):
         with open("Resources\\presets.txt", "w") as fs:
-            fs.write(str(self.presets))
+            print(str(self.presets), file=fs)
 
     def update_previous_inputs(self):
         lbl_text = ""
@@ -343,7 +349,6 @@ class Application(object):
                 new_img = ImageDraw.Draw(image)
                 if qr not in self.previous_inputs.values():
                     qr_data = qr.split(",")
-                    print(qr)
                     if len(qr_data) == 0 or qr_data[-1] != self.settings["qr_name"]:
                         if len(qr_data) > 1 and qr_data[-1] == "config" and \
                                 (qr_data[0] != self.settings["qr_name"] or qr_data[1] != self.settings["num_setup"] or
@@ -371,10 +376,9 @@ class Application(object):
     def parse_qr_code(self, qr_data):
         try:
             scouter, team, match = qr_data[:3]
-        except ValueError:
-            print(len(qr_data))
-            print(qr_data)
-            raise ValueError("not enough values to unpack (expected 3, got {})".format(len(qr_data)))
+        except:
+            Error(self.error_handler, "main.py", 373, "qr_data: {}".format(qr_data))
+            return
         ent = self.check_scouter_name(scouter)
         if ent is not None:
             ent.config(bg="green")
@@ -385,8 +389,6 @@ class Application(object):
             if ent is not None:
                 ent.config(bg="green")
         if self.ent_match_num.get().isnumeric() and int(match) != int(self.ent_match_num.get()):
-            print(match)
-            print(self.ent_match_num.get())
             self.popup_window = WrongMatchNumberPopup(self, match)
             match = self.popup_window.run()
         for s, t in self.received_teams:
@@ -409,7 +411,7 @@ class Application(object):
         while True:
             try:
                 with open(self.settings["qr_strings_file"], "a") as fs:
-                    fs.write(qr + time_stamp + "\n")
+                    print(qr + time_stamp, file=fs)
                 break
             except FileNotFoundError:
                 FileNotFoundPopup(self, "QR strings", "qr_strings_file")
@@ -435,9 +437,6 @@ class Application(object):
                     del qr_data[:self.settings["num_setup"]]
                     for chunk in chunks(qr_data):
                         if len(chunk) < self.settings["num_values"]:
-                            if len(chunk) != 2:  # Expected number of extraneous items
-                                print(chunk)
-                                print("len:", len(chunk))
                             break
                         setup_arr[2] = chunk[0]
                         csv_write.writerow(setup_arr + ["S", "I", chunk[1], scouter])
@@ -460,6 +459,7 @@ class Application(object):
             self.popup_window.close()
         self.put_settings()
         self.put_data()
+        self.error_handler.quit()
         self.root.destroy()
 
 
