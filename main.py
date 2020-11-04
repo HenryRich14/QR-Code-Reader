@@ -1,19 +1,5 @@
-import tkinter as tk
-from pyzbar import pyzbar
-import cv2
-import csv
-from datetime import datetime
-from PIL import Image, ImageTk, ImageDraw
-import threading
-from shutil import copyfile
 from Popup_Windows import *
-
-
-def pad_left_zeros(num, pad_num=3):
-    output = str(num)
-    while len(output) < pad_num:
-        output = "0" + output
-    return output
+from utils import *
 
 
 class Application(object):
@@ -26,6 +12,7 @@ class Application(object):
                                                           not self.root.attributes("-fullscreen")))
         self.root.wm_title("QR Code Reader")
         self.root.wm_protocol("WM_DELETE_WINDOW", self.close)
+        self.photo = None
 
         # Widgets
         # Frames
@@ -69,11 +56,8 @@ class Application(object):
         self.build_widgets()
 
         # Other variables
+        self.pause_cam = False
         self.cam = cv2.VideoCapture(0)
-        self.current_frame_file = "Outputs/current_frame.png"
-        self.setup_list = "Outputs\\setup_list.csv"
-        self.event_list = "Outputs\\event_list.csv"
-        self.qr_strings_file = "Resources/qr_strings.txt"
         self.settings_file = "Resources/settings.txt"
         self.settings = {}
         self.previous_inputs = {}
@@ -82,8 +66,8 @@ class Application(object):
         self.scout_entries = [self.ent_scouter_1, self.ent_scouter_2, self.ent_scouter_3,
                               self.ent_scouter_4, self.ent_scouter_5, self.ent_scouter_6]
         self.received_teams = []
-        self.pull_previous_data()
         self.pull_settings()
+        self.pull_previous_data()
 
         # Setup video thread
         self.thread = threading.Thread(target=self.video_loop, args=(), daemon=True)
@@ -191,22 +175,41 @@ class Application(object):
         self.btn_setup_next_match.grid(row=4, column=0, columnspan=2)
 
     def pull_settings(self):
-        with open(self.settings_file, "r") as fs:
-            self.settings = eval(fs.read().strip())
+        try:
+            with open(self.settings_file, "r") as fs:
+                self.settings = eval(fs.read().strip())
+        except (FileNotFoundError, ValueError):
+            self.settings = {"qr_name": "",
+                             "num_setup": "",
+                             "num_values": "",
+                             "setup_csv_file": "",
+                             "event_csv_file": "",
+                             "qr_strings_file": "",
+                             "current_frame_file": ""}
 
     def put_settings(self):
+        try:
+            os.makedirs("Resources")
+        except OSError:
+            pass
         with open(self.settings_file, "w") as fs:
             fs.write(str(self.settings))
 
     def pull_previous_data(self):
-        with open(self.qr_strings_file, "r") as fs:
-            for line in fs.readlines():
-                t = line[:-1].split(",")[-1]
-                self.previous_inputs[t] = line[:line.index(t)]
-        self.update_previous_inputs()
+        try:
+            with open(self.settings["qr_strings_file"], "r") as fs:
+                for line in fs.readlines():
+                    t = line[:-1].split(",")[-1]
+                    self.previous_inputs[t] = line[:line.index(t)]
+            self.update_previous_inputs()
+        except FileNotFoundError:
+            pass
 
-        with open("Resources\\presets.txt", "r") as fs:
-            self.presets = eval(fs.read())
+        try:
+            with open("Resources\\presets.txt", "r") as fs:
+                self.presets = eval(fs.read())
+        except FileNotFoundError:
+            self.presets = {}
 
     def put_data(self):
         with open("Resources\\presets.txt", "w") as fs:
@@ -229,7 +232,7 @@ class Application(object):
         lbl_text = lbl_text[:-1]
         self.lbl_previous_inputs.config(text=lbl_text)
 
-    def check_scouter_name(self, name):
+    def check_scouter_name(self, name) -> Union[tk.Entry, None]:
         for ent in self.scout_entries:
             if ent.cget("bg") == "green" or ent.get() == "":
                 continue
@@ -250,7 +253,7 @@ class Application(object):
     # Button Click Methods
 
     def btn_settings_click(self):
-        SettingsWindow(self)
+        SettingsPopup(self)
 
     def btn_decrement_click(self):
         match_str = self.ent_match_num.get()
@@ -321,38 +324,55 @@ class Application(object):
 
     def video_loop(self):
         while True:
-            ret_val, img = self.cam.read()
-            # get first qr code on screen if any, and convert to string
+            if self.pause_cam:
+                continue
+            _, img = self.cam.read()
+            while True:
+                try:
+                    cv2.imwrite(self.settings["current_frame_file"], img)
+                    break
+                except cv2.error:
+                    FileNotFoundPopup(self, "Current frame", "current_frame_file")
+                    while self.popup_window is not None:
+                        pass
             codes_on_screen = pyzbar.decode(img)
-            cv2.imwrite(self.current_frame_file, img)
-            image = Image.open(self.current_frame_file)
+            image = Image.open(self.settings["current_frame_file"])
             if len(codes_on_screen) > 0 and len(codes_on_screen[0].data.decode("utf-8")) > 0:
                 qr = codes_on_screen[0].data.decode("utf-8")
                 x, y, w, h = codes_on_screen[0].rect
                 new_img = ImageDraw.Draw(image)
                 if qr not in self.previous_inputs.values():
-                    new_img.rectangle((x, y, x+w, y+h), outline="red", width=4)
-                    self.parse_qr_code(qr)
+                    qr_data = qr.split(",")
+                    print(qr)
+                    if len(qr_data) == 0 or qr_data[-1] != self.settings["qr_name"]:
+                        if len(qr_data) > 1 and qr_data[-1] == "config" and \
+                                (qr_data[0] != self.settings["qr_name"] or qr_data[1] != self.settings["num_setup"] or
+                                 qr_data[2] != self.settings["num_values"]):
+                            ConfigFromCodePopup(self, qr_data)
+                        elif len(qr_data) > 0 and qr_data[-1] == "config":
+                            new_img.rectangle((x, y, x+w, y+h), outline="gold", width=4)
+                        else:
+                            new_img.rectangle((x, y, x+w, y+h), outline="red", width=4)
+                    else:
+                        new_img.rectangle((x, y, x+w, y+h), outline="orange", width=4)
+                        self.parse_qr_code(qr_data)
                 elif qr != list(self.previous_inputs.values())[-1]:
                     new_img.rectangle((x, y, x + w, y + h), outline="blue", width=4)
                 else:
                     new_img.rectangle((x, y, x + w, y + h), outline="green", width=4)
-            image = ImageTk.PhotoImage(image)
-            if self.lbl_camera_img is not None:
-                self.lbl_camera_img.config(image=image)
-                self.lbl_camera_img.image = image
+            try:
+                image = ImageTk.PhotoImage(image)
+                if self.lbl_camera_img is not None:
+                    self.lbl_camera_img.config(image=image)
+                    self.lbl_camera_img.image = image
+            finally:
+                pass
 
-    def parse_qr_code(self, qr):
-        qr_data = qr.strip().split(",")
-        if len(qr_data) < 2 or qr_data[-2] != "InfiniteRechargeScouting":
-            return
+    def parse_qr_code(self, qr_data):
         try:
-            if qr == '':
-                return
             scouter, team, match = qr_data[:3]
         except ValueError:
-            print(len(qr))
-            print(qr)
+            print(len(qr_data))
             print(qr_data)
             raise ValueError("not enough values to unpack (expected 3, got {})".format(len(qr_data)))
         ent = self.check_scouter_name(scouter)
@@ -377,39 +397,60 @@ class Application(object):
         qr_data[1] = team
         qr_data[2] = match
         qr = ""
-        for data in qr_data:
-            qr += data + ","
+        for value in qr_data:
+            qr += value + ","
         dst_file = "QR Codes\\" + team + "_" + match + ".png"
-        copyfile(self.current_frame_file, dst_file)
+        copyfile(self.settings["current_frame_file"], dst_file)
         time_stamp = str(datetime.now())
 
-        def chunks(data, n=self.settings["num_vals"]):
+        def chunks(data, n=self.settings["num_values"]):
             return [data[i:i + n] for i in range(0, len(data), n)]
 
-        with open(self.qr_strings_file, "a") as fs:
-            fs.write(qr + time_stamp + "\n")
+        while True:
+            try:
+                with open(self.settings["qr_strings_file"], "a") as fs:
+                    fs.write(qr + time_stamp + "\n")
+                break
+            except FileNotFoundError:
+                FileNotFoundPopup(self, "QR strings", "qr_strings_file")
+                while self.popup_window is not None:
+                    pass
 
-        with open(self.setup_list, "a") as csv_file:
-            csv_write = csv.writer(csv_file, dialect="excel", delimiter=",")
-            csv_write.writerow(qr_data[:self.settings["num_setup"]])
+        while True:
+            try:
+                with open(self.settings["setup_csv_file"], "a") as csv_file:
+                    csv_write = csv.writer(csv_file, dialect="excel", delimiter=",")
+                    csv_write.writerow(qr_data[:self.settings["num_setup"]])
+                break
+            except FileNotFoundError:
+                FileNotFoundPopup(self, "Setup data CSV", "setup_csv_file")
+                while self.popup_window is not None:
+                    pass
 
-        with open(self.event_list, "a") as csv_file:
-            csv_write = csv.writer(csv_file, dialect="excel", delimiter=",")
-            setup_arr = [team, match, "Game Phase"]
-            del qr_data[:self.settings["num_setup"]]
-            for chunk in chunks(qr_data):
-                if len(chunk) < self.settings["num_vals"]:
-                    if len(chunk) != 2:  # Expected number of extraneous items
-                        print(chunk)
-                        print("len:", len(chunk))
-                    break
-                setup_arr[2] = chunk[0]
-                csv_write.writerow(setup_arr + ["S", "I", chunk[1], scouter])
-                csv_write.writerow(setup_arr + ["S", "O", chunk[2], scouter])
-                csv_write.writerow(setup_arr + ["S", "L", chunk[3], scouter])
-                csv_write.writerow(setup_arr + ["M", "H", chunk[4], scouter])
-                csv_write.writerow(setup_arr + ["M", "L", chunk[5], scouter])
-                csv_write.writerow(setup_arr + ["D", "", chunk[6], scouter])
+        while True:
+            try:
+                with open(self.settings["event_csv_file"], "a") as csv_file:
+                    csv_write = csv.writer(csv_file, dialect="excel", delimiter=",")
+                    setup_arr = [team, match, "Game Phase"]
+                    del qr_data[:self.settings["num_setup"]]
+                    for chunk in chunks(qr_data):
+                        if len(chunk) < self.settings["num_values"]:
+                            if len(chunk) != 2:  # Expected number of extraneous items
+                                print(chunk)
+                                print("len:", len(chunk))
+                            break
+                        setup_arr[2] = chunk[0]
+                        csv_write.writerow(setup_arr + ["S", "I", chunk[1], scouter])
+                        csv_write.writerow(setup_arr + ["S", "O", chunk[2], scouter])
+                        csv_write.writerow(setup_arr + ["S", "L", chunk[3], scouter])
+                        csv_write.writerow(setup_arr + ["M", "H", chunk[4], scouter])
+                        csv_write.writerow(setup_arr + ["M", "L", chunk[5], scouter])
+                        csv_write.writerow(setup_arr + ["D", "", chunk[6], scouter])
+                break
+            except FileNotFoundError:
+                FileNotFoundPopup(self, "Event data CSV", "event_csv_file")
+                while self.popup_window is not None:
+                    pass
         self.previous_inputs[time_stamp] = qr
         self.received_teams.append([scouter, team])
         self.update_previous_inputs()

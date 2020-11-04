@@ -1,1 +1,1 @@
-{'num_setup': '13', 'num_vals': '7'}
+{'qr_name': 'Infinite Recharge', 'num_setup': '13', 'num_values': '7', 'setup_csv_file': 'C:/Users/user/Documents/Python/QR Code Reader/Outputs/setup_list.csv', 'event_csv_file': 'C:/Users/user/Documents/Python/QR Code Reader/Outputs/event_list.csv', 'qr_strings_file': 'C:/Users/user/Documents/Python/QR Code Reader/Outputs/qr_strings.txt', 'current_frame_file': 'C:/Users/user/Documents/Python/QR Code Reader/Outputs/current_frame.png'}
